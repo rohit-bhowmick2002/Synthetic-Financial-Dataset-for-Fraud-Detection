@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fraud Detection — Interactive Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#f7f7f5;--bg1:#ffffff;--bg2:#f0f0ed;--bg3:#e8e8e4;
+  --t1:#1a1a18;--t2:#5a5a56;--t3:#9a9a94;
+  --bd:rgba(0,0,0,0.09);--bd2:rgba(0,0,0,0.15);
+  --blue:#185FA5;--blue-l:#E6F1FB;--blue-d:#0C447C;
+  --green:#3B6D11;--green-l:#EAF3DE;
+  --red:#A32D2D;--red-l:#FCEBEB;
+  --amber:#854F0B;--amber-l:#FAEEDA;
+  --r8:8px;--r12:12px;--r16:16px;
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg0:#111110;--bg1:#1c1c1a;--bg2:#252522;--bg3:#2e2e2b;
+    --t1:#f0f0ec;--t2:#9a9a94;--t3:#5a5a56;
+    --bd:rgba(255,255,255,0.08);--bd2:rgba(255,255,255,0.14);
+    --blue:#85B7EB;--blue-l:#042C53;--blue-d:#B5D4F4;
+    --green:#97C459;--green-l:#173404;
+    --red:#F09595;--red-l:#501313;
+    --amber:#EF9F27;--amber-l:#412402;
+  }
+}
+body{background:var(--bg0);color:var(--t1);font-family:var(--font);font-size:14px;line-height:1.5;padding:20px}
+.db{max-width:1280px;margin:0 auto}
+
+/* Header */
+.hdr{display:flex;justify-content:space-between;align-items:center;background:var(--bg1);border:0.5px solid var(--bd);border-radius:var(--r12);padding:16px 22px;margin-bottom:14px}
+.hdr h1{font-size:16px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:8px}
+.hdr p{font-size:11px;color:var(--t2);margin-top:3px}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.live-badge{font-size:11px;padding:4px 12px;border-radius:20px;background:var(--green-l);color:var(--green);font-weight:500;display:flex;align-items:center;gap:5px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Filter bar */
+.filter-bar{display:flex;align-items:center;gap:10px;background:var(--bg1);border:0.5px solid var(--bd);border-radius:var(--r12);padding:12px 18px;margin-bottom:14px;flex-wrap:wrap}
+.filter-label{font-size:11px;color:var(--t2);font-weight:500;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.filter-btn{font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid var(--bd2);background:transparent;color:var(--t2);cursor:pointer;transition:all .15s;font-family:var(--font);white-space:nowrap}
+.filter-btn:hover{background:var(--bg2);color:var(--t1)}
+.filter-btn.active{background:var(--blue-l);color:var(--blue-d);border-color:var(--blue)}
+.filter-sep{width:1px;height:20px;background:var(--bd2);margin:0 4px}
+.filter-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+select{font-size:12px;padding:5px 10px;border-radius:var(--r8);border:0.5px solid var(--bd2);background:var(--bg1);color:var(--t1);cursor:pointer;font-family:var(--font)}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.kpi{background:var(--bg1);border:0.5px solid var(--bd);border-radius:var(--r12);padding:16px 18px;cursor:pointer;transition:border-color .15s}
+.kpi:hover{border-color:var(--bd2)}
+.kpi.selected{border-color:var(--blue);background:var(--blue-l)}
+.kpi-ico{font-size:18px;margin-bottom:8px}
+.kpi-lbl{font-size:10px;color:var(--t2);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.kpi-val{font-size:24px;font-weight:700;line-height:1;margin-bottom:5px}
+.kpi-sub{font-size:11px}
+.c-blue{color:var(--blue)}
+.c-green{color:var(--green)}
+.c-red{color:var(--red)}
+.c-amber{color:var(--amber)}
+
+/* Grid rows */
+.row2{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-bottom:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.row2b{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+
+/* Cards */
+.card{background:var(--bg1);border:0.5px solid var(--bd);border-radius:var(--r12);padding:16px 18px}
+.card-title{font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.card-title span{font-weight:400;font-size:10px;color:var(--t3);text-transform:none;letter-spacing:0}
+.chart-wrap{position:relative;width:100%}
+
+/* Legend */
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;font-size:11px;color:var(--t2)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+
+/* Bar rows */
+.bar-rows{display:flex;flex-direction:column;gap:8px}
+.brow{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;border-radius:var(--r8);padding:3px 6px;transition:background .12s}
+.brow:hover{background:var(--bg2)}
+.brow.hl{background:var(--blue-l)}
+.blbl{width:76px;color:var(--t2);text-align:right;flex-shrink:0;font-size:11px}
+.btrack{flex:1;height:8px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.bfill{height:100%;border-radius:4px;transition:width .5s ease}
+.bval{width:46px;font-size:11px;color:var(--t2);font-weight:500}
+
+/* Divider */
+hr.d{border:none;border-top:0.5px solid var(--bd);margin:10px 0}
+
+/* Stats */
+.srow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--bd);font-size:12px}
+.srow:last-child{border-bottom:none}
+.slbl{color:var(--t2)}
+.sval{font-weight:600;color:var(--t1)}
+
+/* Risk table */
+.rtbl{width:100%;font-size:12px;border-collapse:collapse}
+.rtbl th{text-align:left;color:var(--t2);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--bd2);font-size:10px;text-transform:uppercase;letter-spacing:.03em}
+.rtbl td{padding:8px 8px;color:var(--t1);border-bottom:0.5px solid var(--bd)}
+.rtbl tr:last-child td{border-bottom:none}
+.rtbl tr.trow{cursor:pointer;transition:background .1s}
+.rtbl tr.trow:hover td{background:var(--bg2)}
+.rtbl tr.trow.hl td{background:var(--blue-l)}
+
+/* Pills */
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600}
+.pill-r{background:var(--red-l);color:var(--red)}
+.pill-g{background:var(--green-l);color:var(--green)}
+.pill-a{background:var(--amber-l);color:var(--amber)}
+
+/* Insight box */
+.insight{margin-top:10px;padding:7px 12px;background:var(--bg2);border-radius:var(--r8);font-size:11px;color:var(--t2);border-left:2px solid var(--blue);border-radius:0 var(--r8) var(--r8) 0}
+
+/* Donut */
+.dnut-wrap{display:flex;align-items:center;gap:16px}
+.dnut-lbls{font-size:12px;flex:1}
+.dnut-lbls li{list-style:none;display:flex;align-items:center;gap:6px;margin-bottom:7px;color:var(--t2);cursor:pointer;border-radius:var(--r8);padding:2px 4px;transition:background .1s}
+.dnut-lbls li:hover{background:var(--bg2)}
+.dnut-lbls li.hl{background:var(--blue-l)}
+.dnut-lbls .dv{margin-left:auto;font-weight:600;color:var(--t1);font-size:11px}
+
+/* Tooltip */
+.tip{position:absolute;pointer-events:none;background:var(--bg1);border:0.5px solid var(--bd2);border-radius:var(--r8);padding:8px 12px;font-size:12px;color:var(--t1);z-index:99;display:none;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+
+/* Drill panel */
+.drill{background:var(--bg1);border:0.5px solid var(--blue);border-radius:var(--r12);padding:14px 18px;margin-bottom:12px;display:none}
+.drill.open{display:block}
+.drill-title{font-size:13px;font-weight:600;color:var(--blue);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.drill-title button{font-size:11px;padding:3px 10px;border-radius:var(--r8);border:0.5px solid var(--bd2);background:transparent;color:var(--t2);cursor:pointer;font-family:var(--font)}
+.drill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.drill-stat{background:var(--bg2);border-radius:var(--r8);padding:10px 12px}
+.drill-stat .dl{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.drill-stat .dv{font-size:18px;font-weight:700;color:var(--t1)}
+.drill-stat .ds{font-size:10px;color:var(--t3);margin-top:2px}
+
+/* Footer */
+.footer{text-align:center;font-size:11px;color:var(--t3);padding:14px 0 0;border-top:0.5px solid var(--bd);margin-top:4px}
+
+/* Responsive */
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .row2,.row3,.row2b{grid-template-columns:1fr}
+  .drill-grid{grid-template-columns:1fr 1fr}
+  body{padding:10px}
+}
+@media(max-width:520px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .kpi-val{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="db">
+
+<!-- Header -->
+<div class="hdr">
+  <div>
+    <h1>🛡️ Financial fraud detection dashboard</h1>
+    <p>Synthetic dataset · 6.36M transactions · Steps 1–743 (hourly) · Click any element to drill down</p>
+  </div>
+  <div class="hdr-right">
+    <span class="live-badge"><span class="live-dot"></span>Live</span>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+  <span class="filter-label">Filter by type:</span>
+  <button class="filter-btn active" data-type="ALL">All types</button>
+  <button class="filter-btn" data-type="CASH_OUT">CASH_OUT</button>
+  <button class="filter-btn" data-type="PAYMENT">PAYMENT</button>
+  <button class="filter-btn" data-type="CASH_IN">CASH_IN</button>
+  <button class="filter-btn" data-type="TRANSFER">TRANSFER</button>
+  <button class="filter-btn" data-type="DEBIT">DEBIT</button>
+  <span class="filter-sep"></span>
+  <div class="filter-right">
+    <span class="filter-label">Sort charts by:</span>
+    <select id="sortSel">
+      <option value="count">Transaction count</option>
+      <option value="amount">Total amount</option>
+      <option value="fraud">Fraud count</option>
+    </select>
+  </div>
+</div>
+
+<!-- Drill panel -->
+<div class="drill" id="drillPanel">
+  <div class="drill-title">
+    <span id="drillTitle">TRANSFER — detailed breakdown</span>
+    <button onclick="closeDrill()">✕ Close</button>
+  </div>
+  <div class="drill-grid" id="drillGrid"></div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi" onclick="highlightType('ALL')" title="Click to reset filter">
+    <div class="kpi-ico">🔄</div>
+    <div class="kpi-lbl">Total transactions</div>
+    <div class="kpi-val c-blue" id="kpi-txn">6.36M</div>
+    <div class="kpi-sub" style="color:var(--green)">↑ All 5 types active</div>
+  </div>
+  <div class="kpi" onclick="highlightType('ALL')" title="Click to see volume">
+    <div class="kpi-ico">💰</div>
+    <div class="kpi-lbl">Total volume</div>
+    <div class="kpi-val" id="kpi-vol">$997B</div>
+    <div class="kpi-sub" style="color:var(--t2)">Across all transaction types</div>
+  </div>
+  <div class="kpi" onclick="highlightType('FRAUD')" title="Click to highlight fraud types">
+    <div class="kpi-ico">⚠️</div>
+    <div class="kpi-lbl">Fraud cases</div>
+    <div class="kpi-val c-red" id="kpi-fraud">8,213</div>
+    <div class="kpi-sub c-red">0.047% fraud rate</div>
+  </div>
+  <div class="kpi" onclick="highlightType('FRAUD')" title="Click to highlight fraud exposure">
+    <div class="kpi-ico">💸</div>
+    <div class="kpi-lbl">Fraud exposure</div>
+    <div class="kpi-val c-amber" id="kpi-exp">$2.33B</div>
+    <div class="kpi-sub c-amber">Avg $283K per case</div>
+  </div>
+</div>
+
+<!-- Row 1: Volume bar + Donut -->
+<div class="row2">
+  <div class="card">
+    <div class="card-title">Transaction volume by type <span>Click bars to filter</span></div>
+    <div class="legend">
+      <span><i style="background:#185FA5"></i>CASH_OUT</span>
+      <span><i style="background:#0F6E56"></i>PAYMENT</span>
+      <span><i style="background:#534AB7"></i>CASH_IN</span>
+      <span><i style="background:#BA7517"></i>TRANSFER</span>
+      <span><i style="background:#73726c"></i>DEBIT</span>
+    </div>
+    <div class="chart-wrap" style="height:210px">
+      <canvas id="typeChart" role="img" aria-label="Bar chart of transaction counts by type.">CASH_OUT 2.2M, PAYMENT 2.1M, CASH_IN 1.4M, TRANSFER 0.5M, DEBIT 70K.</canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Volume share <span>Click segments</span></div>
+    <div class="dnut-wrap">
+      <div class="chart-wrap" style="height:168px;width:168px;flex-shrink:0">
+        <canvas id="donutChart" role="img" aria-label="Donut chart of volume share by type.">CASH_OUT 41%, PAYMENT 23%, CASH_IN 23%, TRANSFER 12%, DEBIT 1%.</canvas>
+      </div>
+      <ul class="dnut-lbls" id="donutLbls">
+        <li data-type="CASH_OUT"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#185FA5;margin-right:5px"></i>CASH_OUT<span class="dv">41%</span></li>
+        <li data-type="PAYMENT"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#0F6E56;margin-right:5px"></i>PAYMENT<span class="dv">23%</span></li>
+        <li data-type="CASH_IN"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#534AB7;margin-right:5px"></i>CASH_IN<span class="dv">23%</span></li>
+        <li data-type="TRANSFER"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#BA7517;margin-right:5px"></i>TRANSFER<span class="dv">12%</span></li>
+        <li data-type="DEBIT"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#73726c;margin-right:5px"></i>DEBIT<span class="dv">1%</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: Fraud rate + Avg amount + Impact -->
+<div class="row3">
+  <div class="card">
+    <div class="card-title">Fraud rate by type <span>Hover rows</span></div>
+    <div class="bar-rows" id="fraudRateBars">
+      <div class="brow" data-type="TRANSFER" onclick="drillDown('TRANSFER')"><div class="blbl">TRANSFER</div><div class="btrack"><div class="bfill" style="width:100%;background:#E24B4A"></div></div><div class="bval c-red">0.31%</div></div>
+      <div class="brow" data-type="CASH_OUT" onclick="drillDown('CASH_OUT')"><div class="blbl">CASH_OUT</div><div class="btrack"><div class="bfill" style="width:22%;background:#EF9F27"></div></div><div class="bval c-amber">0.07%</div></div>
+      <div class="brow" data-type="PAYMENT"><div class="blbl">PAYMENT</div><div class="btrack"><div class="bfill" style="width:1%;background:#639922"></div></div><div class="bval c-green">0.00%</div></div>
+      <div class="brow" data-type="CASH_IN"><div class="blbl">CASH_IN</div><div class="btrack"><div class="bfill" style="width:1%;background:#639922"></div></div><div class="bval c-green">0.00%</div></div>
+      <div class="brow" data-type="DEBIT"><div class="blbl">DEBIT</div><div class="btrack"><div class="bfill" style="width:1%;background:#639922"></div></div><div class="bval c-green">0.00%</div></div>
+    </div>
+    <div class="insight">Fraud exclusive to TRANSFER &amp; CASH_OUT — click rows to drill down</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Avg amount by type <span>Click to compare</span></div>
+    <div class="bar-rows" id="avgAmtBars">
+      <div class="brow" data-type="TRANSFER" onclick="drillDown('TRANSFER')"><div class="blbl">TRANSFER</div><div class="btrack"><div class="bfill" style="width:100%;background:#534AB7"></div></div><div class="bval">$689K</div></div>
+      <div class="brow" data-type="CASH_OUT" onclick="drillDown('CASH_OUT')"><div class="blbl">CASH_OUT</div><div class="btrack"><div class="bfill" style="width:27%;background:#185FA5"></div></div><div class="bval">$187K</div></div>
+      <div class="brow" data-type="CASH_IN"><div class="blbl">CASH_IN</div><div class="btrack"><div class="bfill" style="width:25%;background:#185FA5"></div></div><div class="bval">$173K</div></div>
+      <div class="brow" data-type="PAYMENT"><div class="blbl">PAYMENT</div><div class="btrack"><div class="bfill" style="width:2%;background:#0F6E56"></div></div><div class="bval">$11.6K</div></div>
+      <div class="brow" data-type="DEBIT"><div class="blbl">DEBIT</div><div class="btrack"><div class="bfill" style="width:1%;background:#73726c"></div></div><div class="bval">$6.5K</div></div>
+    </div>
+    <div class="insight">TRANSFER is <strong>59×</strong> higher than PAYMENT avg</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Fraud financial impact</div>
+    <div class="srow"><span class="slbl">Total fraud losses</span><span class="sval c-red">$2.33B</span></div>
+    <div class="srow"><span class="slbl">TRANSFER fraud</span><span class="sval">$1.17B</span></div>
+    <div class="srow"><span class="slbl">CASH_OUT fraud</span><span class="sval">$1.16B</span></div>
+    <div class="srow"><span class="slbl">Avg fraud amount</span><span class="sval">$871K</span></div>
+    <div class="srow"><span class="slbl">Max single fraud</span><span class="sval">$10M</span></div>
+    <div class="srow"><span class="slbl">Rule-flagged (&gt;$200K)</span><span class="sval c-amber">16 cases</span></div>
+  </div>
+</div>
+
+<!-- Row 3: Trend + Risk table -->
+<div class="row2">
+  <div class="card">
+    <div class="card-title">Hourly transaction activity <span>Hover for values</span></div>
+    <div class="legend">
+      <span><i style="background:#185FA5"></i>Total transactions</span>
+      <span><i style="background:#E24B4A;border-radius:0"></i>Fraud ×100 (scaled)</span>
+    </div>
+    <div class="chart-wrap" style="height:185px">
+      <canvas id="trendChart" role="img" aria-label="Line chart of hourly transaction volume and fraud.">Volume peaks steps 8-19, fraud spread throughout.</canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Risk table <span>Click rows for detail</span></div>
+    <table class="rtbl">
+      <thead><tr><th>Type</th><th>Fraud cases</th><th>Losses</th><th>Risk</th></tr></thead>
+      <tbody>
+        <tr class="trow" data-type="TRANSFER" onclick="drillDown('TRANSFER')"><td><strong>TRANSFER</strong></td><td>4,097</td><td>$1.17B</td><td><span class="pill pill-r">🔴 Critical</span></td></tr>
+        <tr class="trow" data-type="CASH_OUT" onclick="drillDown('CASH_OUT')"><td><strong>CASH_OUT</strong></td><td>4,116</td><td>$1.16B</td><td><span class="pill pill-r">🔴 Critical</span></td></tr>
+        <tr class="trow" data-type="PAYMENT"><td>PAYMENT</td><td>0</td><td>$0</td><td><span class="pill pill-g">✅ None</span></td></tr>
+        <tr class="trow" data-type="CASH_IN"><td>CASH_IN</td><td>0</td><td>$0</td><td><span class="pill pill-g">✅ None</span></td></tr>
+        <tr class="trow" data-type="DEBIT"><td>DEBIT</td><td>0</td><td>$0</td><td><span class="pill pill-g">✅ None</span></td></tr>
+      </tbody>
+    </table>
+    <div class="insight">100% of losses from just 2 of 5 transaction types</div>
+  </div>
+</div>
+
+<!-- Row 4: Balance drain + Amount segments -->
+<div class="row2b">
+  <div class="card">
+    <div class="card-title">Balance drain — fraud signature <span>Toggle groups below</span></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="filter-btn active" id="bd-fraud" onclick="toggleBalance('fraud')">Fraud transactions</button>
+      <button class="filter-btn active" id="bd-normal" onclick="toggleBalance('normal')">Normal transactions</button>
+    </div>
+    <div class="chart-wrap" style="height:165px">
+      <canvas id="balanceChart" role="img" aria-label="Grouped bar: fraud drains sender balance from $831K to $24K; normal barely changes.">Fraud before $831K, after $24K. Normal before $912K, after $932K.</canvas>
+    </div>
+    <div class="insight">Key signal: fraudulent txns drain sender balance to ~$0</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Amount segments <span>Click bars to filter</span></div>
+    <div class="chart-wrap" style="height:200px">
+      <canvas id="amtChart" role="img" aria-label="Bar chart by amount range. 100K-1M is largest segment.">Under 1K: 10.9K, 1K-10K: 89.6K, 10K-100K: 168.6K, 100K-1M: 221.4K, over 1M: 9.5K.</canvas>
+    </div>
+    <div class="insight">High-value ($100K+) txns dominate — highest fraud risk band</div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">Financial Fraud Detection Dashboard &nbsp;·&nbsp; 6.36M transactions &nbsp;·&nbsp; Interactive version &nbsp;·&nbsp; All charts respond to filters and clicks</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+const gc = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+const tc = isDark ? '#7a7a74' : '#aaa';
+
+const TYPES = ['CASH_OUT','PAYMENT','CASH_IN','TRANSFER','DEBIT'];
+const COLORS = { CASH_OUT:'#185FA5', PAYMENT:'#0F6E56', CASH_IN:'#534AB7', TRANSFER:'#BA7517', DEBIT:'#73726c' };
+const DATA = {
+  ALL: { count:[2237500,2074130,1393375,530700,70220], amount:[418e9,241e9,241e9,366e9,456e6], fraud:[0,0,0,4097,4116].reverse().concat([]).sort((a,b)=>0), fraudActual:[4116,0,0,0,4097] },
+};
+const typeCount  = [2237500,2074130,1393375,530700,70220];
+const typeAmount = [4.18e11,2.41e11,2.41e11,3.66e11,4.56e8];
+const typeFraud  = [4116,0,0,0,4097];
+const typeColors = TYPES.map(t=>COLORS[t]);
+const baseOpts = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{backgroundColor: isDark?'#252522':'#fff', titleColor: isDark?'#f0f0ec':'#1a1a18', bodyColor: isDark?'#9a9a94':'#6b6b67', borderColor: isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)', borderWidth:1 }}};
+
+let activeType = 'ALL';
+let showFraud = true, showNormal = true;
+
+// --- Type bar chart ---
+const typeCtx = document.getElementById('typeChart');
+const typeChart = new Chart(typeCtx, {
+  type:'bar',
+  data:{ labels:TYPES, datasets:[{ data:typeCount, backgroundColor:typeColors, borderRadius:5, borderSkipped:false }] },
+  options:{ ...baseOpts, onClick:(e,els)=>{ if(els.length){ const t=TYPES[els[0].index]; filterType(t); }}, scales:{
+    x:{ticks:{color:tc,font:{size:11}},grid:{color:gc}},
+    y:{ticks:{color:tc,font:{size:11},callback:v=>(v/1e6).toFixed(1)+'M'},grid:{color:gc}}
+  }}
+});
+
+// --- Donut ---
+const donutChart = new Chart(document.getElementById('donutChart'), {
+  type:'doughnut',
+  data:{ labels:TYPES, datasets:[{data:[41,23,23,12,1], backgroundColor:typeColors, borderWidth:2, borderColor: isDark?'#1c1c1a':'#fff'}] },
+  options:{ ...baseOpts, cutout:'63%', onClick:(e,els)=>{ if(els.length){ filterType(TYPES[els[0].index]); }}}
+});
+document.querySelectorAll('#donutLbls li').forEach(li=>{
+  li.addEventListener('click',()=>filterType(li.dataset.type));
+});
+
+// --- Trend chart ---
+const trendLabels = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+const trendTxn    = [2708,1014,552,565,665,1660,6837,21097,37628,35991,37241,36153,37515,41485,44609,42471,43361,49579,51352,7517];
+const trendFraud  = [1600,800,400,1000,600,2200,1200,1200,1900,1100,700,1400,1400,1200,2000,1000,700,1600,1100,200];
+const trendChart = new Chart(document.getElementById('trendChart'), {
+  type:'line',
+  data:{ labels:trendLabels, datasets:[
+    { label:'Transactions', data:trendTxn, borderColor:'#185FA5', backgroundColor: isDark?'rgba(24,95,165,0.13)':'rgba(24,95,165,0.07)', fill:true, tension:.35, pointRadius:3, pointHoverRadius:6, pointBackgroundColor:'#185FA5' },
+    { label:'Fraud ×100', data:trendFraud, borderColor:'#E24B4A', backgroundColor:'transparent', fill:false, tension:.35, borderDash:[5,4], pointRadius:3, pointHoverRadius:6, pointBackgroundColor:'#E24B4A' }
+  ]},
+  options:{ ...baseOpts, interaction:{mode:'index',intersect:false}, scales:{
+    x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},
+    y:{ticks:{color:tc,font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:gc}}
+  }}
+});
+
+// --- Balance drain chart ---
+const balData = { fraud:[831366,23747], normal:[911730,931849] };
+const balChart = new Chart(document.getElementById('balanceChart'), {
+  type:'bar',
+  data:{ labels:['Fraud — before','Fraud — after','Normal — before','Normal — after'],
+    datasets:[{ data:[831366,23747,911730,931849], backgroundColor:['#E24B4A','#F09595','#185FA5','#85B7EB'], borderRadius:5, borderSkipped:false }]},
+  options:{ ...baseOpts, scales:{
+    x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},
+    y:{ticks:{color:tc,font:{size:10},callback:v=>'$'+(v/1000).toFixed(0)+'K'},grid:{color:gc}}
+  }}
+});
+
+// --- Amount bucket chart ---
+const amtLabels = ['<$1K','$1K–$10K','$10K–$100K','$100K–$1M','>$1M'];
+const amtData   = [10878,89569,168633,221411,9509];
+const amtChart  = new Chart(document.getElementById('amtChart'), {
+  type:'bar',
+  data:{ labels:amtLabels, datasets:[{ data:amtData, backgroundColor:['#B5D4F4','#378ADD','#185FA5','#0C447C','#042C53'], borderRadius:5, borderSkipped:false }] },
+  options:{ ...baseOpts, onClick:(e,els)=>{ if(els.length){ const lbl=amtLabels[els[0].index]; showAmtInsight(lbl,amtData[els[0].index]); }}, scales:{
+    x:{ticks:{color:tc,font:{size:10},autoSkip:false,maxRotation:20},grid:{color:gc}},
+    y:{ticks:{color:tc,font:{size:10},callback:v=>(v/1000).toFixed(0)+'K'},grid:{color:gc}}
+  }}
+});
+
+// --- Filter logic ---
+function filterType(t) {
+  if(activeType === t){ activeType='ALL'; }else{ activeType=t; }
+  document.querySelectorAll('.filter-btn[data-type]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.type==='ALL' ? activeType==='ALL' : b.dataset.type===activeType);
+  });
+  updateCharts();
+  highlightRows(activeType);
+}
+
+function highlightType(t) {
+  if(t==='FRAUD'){ highlightRows('TRANSFER'); return; }
+  filterType('ALL');
+}
+
+function highlightRows(t) {
+  document.querySelectorAll('.brow,.trow').forEach(r=>r.classList.toggle('hl', r.dataset.type===t));
+  document.querySelectorAll('#donutLbls li').forEach(li=>li.classList.toggle('hl', li.dataset.type===t));
+}
+
+function updateCharts() {
+  const t = activeType;
+  let newData;
+  if(t==='ALL'){
+    newData = typeCount;
+  } else {
+    newData = TYPES.map((tp,i)=> tp===t ? typeCount[i] : 0);
+  }
+  typeChart.data.datasets[0].data = newData;
+  typeChart.data.datasets[0].backgroundColor = TYPES.map((tp,i)=>
+    t==='ALL' || tp===t ? typeColors[i] : isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.07)'
+  );
+  typeChart.update('active');
+
+  const donutNew = t==='ALL' ? [41,23,23,12,1] : TYPES.map((tp,i)=>tp===t?[41,23,23,12,1][i]:0);
+  donutChart.data.datasets[0].data = donutNew;
+  donutChart.update('active');
+
+  updateKPIs(t);
+}
+
+const kpiMap = {
+  ALL:  { txn:'6.36M', vol:'$997B', fraud:'8,213', exp:'$2.33B' },
+  CASH_OUT:  { txn:'2.24M', vol:'$418B', fraud:'4,116', exp:'$1.16B' },
+  PAYMENT:   { txn:'2.07M', vol:'$241B', fraud:'0',     exp:'$0' },
+  CASH_IN:   { txn:'1.39M', vol:'$241B', fraud:'0',     exp:'$0' },
+  TRANSFER:  { txn:'530K',  vol:'$366B', fraud:'4,097', exp:'$1.17B' },
+  DEBIT:     { txn:'70K',   vol:'$456M', fraud:'0',     exp:'$0' },
+};
+function updateKPIs(t) {
+  const k = kpiMap[t] || kpiMap.ALL;
+  document.getElementById('kpi-txn').textContent   = k.txn;
+  document.getElementById('kpi-vol').textContent   = k.vol;
+  document.getElementById('kpi-fraud').textContent = k.fraud;
+  document.getElementById('kpi-exp').textContent   = k.exp;
+}
+
+// --- Filter buttons ---
+document.querySelectorAll('.filter-btn[data-type]').forEach(btn=>{
+  btn.addEventListener('click',()=>filterType(btn.dataset.type));
+});
+
+// --- Sort selector ---
+document.getElementById('sortSel').addEventListener('change', function(){
+  const sortBy = this.value;
+  let order;
+  if(sortBy==='count') order=[...typeCount].map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v).map(x=>x.i);
+  else if(sortBy==='amount') order=[...typeAmount].map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v).map(x=>x.i);
+  else order=[...typeFraud].map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v).map(x=>x.i);
+  typeChart.data.labels = order.map(i=>TYPES[i]);
+  typeChart.data.datasets[0].data = order.map(i=>typeCount[i]);
+  typeChart.data.datasets[0].backgroundColor = order.map(i=>typeColors[i]);
+  typeChart.update();
+});
+
+// --- Balance toggle ---
+function toggleBalance(group) {
+  if(group==='fraud') showFraud=!showFraud;
+  else showNormal=!showNormal;
+  document.getElementById('bd-fraud').classList.toggle('active',showFraud);
+  document.getElementById('bd-normal').classList.toggle('active',showNormal);
+  const d=[];
+  const c=[];
+  const l=[];
+  if(showFraud){d.push(831366,23747);c.push('#E24B4A','#F09595');l.push('Fraud — before','Fraud — after');}
+  if(showNormal){d.push(911730,931849);c.push('#185FA5','#85B7EB');l.push('Normal — before','Normal — after');}
+  balChart.data.labels=l;
+  balChart.data.datasets[0].data=d;
+  balChart.data.datasets[0].backgroundColor=c;
+  balChart.update();
+}
+
+// --- Drill down panel ---
+const drillInfo = {
+  TRANSFER:{ title:'TRANSFER — detailed breakdown', stats:[
+    {l:'Total transactions',v:'530,700',s:'8.1% of all txns'},
+    {l:'Total volume',v:'$366B',s:'Highest avg per txn'},
+    {l:'Avg transaction',v:'$689,441',s:'59× higher than PAYMENT'},
+    {l:'Fraud cases',v:'4,097',s:'0.31% fraud rate — CRITICAL'},
+    {l:'Fraud losses',v:'$1.17B',s:'Avg $285K per case'},
+    {l:'Flagged by rules',v:'16',s:'Large TRANSFER >$200K'},
+  ]},
+  CASH_OUT:{ title:'CASH_OUT — detailed breakdown', stats:[
+    {l:'Total transactions',v:'2,237,500',s:'35.1% of all txns'},
+    {l:'Total volume',v:'$418B',s:'Largest by count'},
+    {l:'Avg transaction',v:'$187,493',s:'High-value withdrawals'},
+    {l:'Fraud cases',v:'4,116',s:'0.07% fraud rate — HIGH RISK'},
+    {l:'Fraud losses',v:'$1.16B',s:'Avg $282K per case'},
+    {l:'Balance drain',v:'100%',s:'All fraud zeroes out origin'},
+  ]},
+};
+function drillDown(type) {
+  const info = drillInfo[type];
+  if(!info) return;
+  document.getElementById('drillTitle').textContent = info.title;
+  document.getElementById('drillGrid').innerHTML = info.stats.map(s=>`
+    <div class="drill-stat">
+      <div class="dl">${s.l}</div>
+      <div class="dv">${s.v}</div>
+      <div class="ds">${s.s}</div>
+    </div>`).join('');
+  const panel = document.getElementById('drillPanel');
+  panel.classList.add('open');
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  highlightRows(type);
+}
+function closeDrill() {
+  document.getElementById('drillPanel').classList.remove('open');
+  highlightRows('');
+}
+
+function showAmtInsight(label, count) {
+  const el = document.querySelector('.card:has(#amtChart) .insight');
+  if(el) el.textContent = `${label} — ${count.toLocaleString()} transactions selected`;
+}
+
+// Bar rows hover highlight
+document.querySelectorAll('.brow').forEach(r=>{
+  r.addEventListener('mouseenter',()=>highlightRows(r.dataset.type));
+  r.addEventListener('mouseleave',()=>highlightRows(activeType));
+});
+</script>
+</body>
+</html>
