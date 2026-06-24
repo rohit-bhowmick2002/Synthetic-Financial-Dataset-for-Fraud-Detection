@@ -678,13 +678,14 @@ open fraud_detection_dashboard.html
 | Network hubs | Top `nameDest` by received transaction volume |
 
 ---
-
 ## 👤 Author
 
 **Rohit Bhowmick** — Data Analyst  
-*SQL · Python · Power BI · Tableau*
+*SQL · Python · Tableau · Power BI*
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat&logo=linkedin)](www.linkedin.com/in/rohit-bhowmick)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat&logo=linkedin)](https://linkedin.com/in/rohit-bhowmick)
 [![GitHub](https://img.shields.io/badge/GitHub-Follow-black?style=flat&logo=github)](https://github.com/rohit-bhowmick2002)
 
 ---
+
+*Built to demonstrate real-world e-commerce analytics competency: relational data modelling, multi-level SQL engineering, customer segmentation, operational diagnostics, and business storytelling through data.*
